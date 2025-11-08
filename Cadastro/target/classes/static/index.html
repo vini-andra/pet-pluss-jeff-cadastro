@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PetPluss — Cadastro</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>PetPluss — Cadastro</h1>
+  </header>
+
+  <main id="main">
+    <section id="auth">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Email<br><input type="email" id="email" required /></label>
+        <label>Senha<br><input type="password" id="senha" required /></label>
+        <button type="submit">Entrar</button>
+      </form>
+      <div id="loginMsg" class="msg"></div>
+    </section>
+
+    <section id="app" class="hidden">
+      <div class="toolbar">
+        <button id="btnLogout">Logout</button>
+        <button id="btnLoadClientes">Carregar clientes</button>
+        <button id="btnLoadAnimais">Carregar animais</button>
+      </div>
+      <div id="loginBanner" class="banner" aria-live="polite"></div>
+      <h2>Dados</h2>
+      <div id="forms">
+        <h3>Criar cliente + animal</h3>
+        <form id="createForm">
+          <label>Nome do cliente<br><input type="text" id="nome_cliente" required></label>
+          <label>CPF<br><input type="text" id="cpf" required></label>
+          <label>Telefone<br><input type="text" id="telefone"></label>
+          <label>Nome do animal<br><input type="text" id="nome_animal" required></label>
+          <label>Espécie<br><input type="text" id="especie"></label>
+          <label>Raça<br><input type="text" id="raca"></label>
+          <button type="submit">Criar</button>
+        </form>
+        <div id="createMsg" class="msg"></div>
+      </div>
+
+      <div id="dataArea">
+        <p>Use os botões acima ou o formulário para inserir dados.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Front-end mínimo para testes locais — PetPluss</small>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

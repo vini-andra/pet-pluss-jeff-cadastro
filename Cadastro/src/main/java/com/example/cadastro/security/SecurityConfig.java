@@ -31,17 +31,31 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http
-        .csrf(csrf -> csrf.disable())
-        .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/api/auth/**", "/actuator/**", "/h2-console/**").permitAll()
-            .anyRequest().authenticated()
-        );
+        http
+            // CSRF is disabled for this API-style app (stateless JWT). If you need CSRF protection for forms, adjust here.
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                    // allow unauthenticated access to login, actuator, static content and H2 console in dev
+                    .requestMatchers(
+                            "/api/auth/**",
+                            "/actuator/**",
+                            "/h2-console/**",
+                            "/",
+                            "/index.html",
+                            "/js/**",
+                            "/css/**",
+                            "/favicon.ico"
+                    ).permitAll()
+                    .anyRequest().authenticated()
+            );
 
-    http.addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class);
+        // H2 console uses frames - allow same origin
+        http.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
 
-    return http.build();
+        http.addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
 
     @Bean

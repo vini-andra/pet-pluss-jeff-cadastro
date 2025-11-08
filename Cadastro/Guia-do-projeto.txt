@@ -1,0 +1,208 @@
+Guia didático do projeto "Cadastro" (PetPluss)
+
+Este documento foi escrito especialmente para iniciantes. A intenção é explicar cada parte do projeto `Cadastro` presente na pasta `Cadastro/` com calma, exemplos e exercícios, para que você consiga aprender lendo o texto.
+
+SUMÁRIO
+
+1) Por que este projeto é útil para aprender
+2) Conceitos fundamentais (breve revisão)
+3) Como rodar o projeto (passo a passo)
+4) Entendendo o `pom.xml` (Maven) — explicado para iniciantes
+5) Estrutura de pastas do código
+6) O que faz cada parte do código — explicado em profundidade
+    - `Application.java`
+    - `controller/`
+    - `model/` (entidades)
+    - `repository/`
+    - `security/`
+    - `document/` (Mongo)
+7) Exemplos práticos e comandos `curl` para testar a API
+8) Erros comuns e como resolver — checklist de debugging
+9) Exercícios práticos para consolidar o aprendizado
+10) Boas práticas e próximos passos
+
+-----------------------------------------------------------------
+
+1) Por que este projeto é útil para aprender
+-------------------------------------------
+Este projeto combina várias partes que aparecem em aplicações reais: API REST, persistência relacional (JPA), persistência em documento (Mongo), e segurança (tokens). Aprender a ler, rodar e modificar esse projeto dá uma visão prática do ciclo de vida de uma aplicação web.
+
+2) Conceitos fundamentais (breve revisão)
+----------------------------------------
+- Java: linguagem orientada a objetos. Conceitos importantes: classes, objetos, métodos, pacotes.
+- Maven: sistema de build. Com ele você compila, testa e empacota a aplicação. O arquivo de configuração é `pom.xml`.
+- Spring Boot: framework que reduz a configuração necessária para criar aplicações Java. Ele cuida da maior parte da configuração automaticamente.
+- REST: estilo de comunicação via HTTP. Usamos métodos como GET (ler), POST (criar), PUT/PATCH (atualizar), DELETE (remover).
+
+3) Como rodar o projeto (passo a passo, com explicações)
+------------------------------------------------------
+Pré-requisitos:
+- JDK 21 instalado (ou superior). O projeto exige JDK >= 21 conforme configurado.
+- Maven (3.8+ recomendado).
+
+Passos:
+1. Abra um terminal no diretório `Cadastro`.
+2. Rode `mvn -U -DskipTests package` — isso baixa dependências e cria o arquivo JAR em `target/`.
+    - Por que `-U`? Força atualização de dependências do repositório remoto.
+    - Por que `-DskipTests`? No desenvolvimento rápido você pode pular testes; para validar tudo, remova essa flag.
+3. Rode `java -jar target/cadastro-1.0.0.jar` para iniciar o servidor.
+4. A aplicação por padrão fica disponível em `http://localhost:8080` (a menos que outra porta esteja configurada em `application.properties`).
+
+4) Entendendo o `pom.xml` (Maven) — explicado com analogia
+----------------------------------------------------------
+O `pom.xml` é a receita da sua aplicação:
+
+- `<parent>` traz convenções do Spring Boot (como versões compatíveis).
+- `<properties>` define variáveis úteis, por exemplo `<java.version>21</java.version>`.
+- `<dependencies>` lista bibliotecas que seu projeto precisa — o Maven baixa e coloca no classpath.
+- `<plugins>` controlam o processo de build (compilação, testes, empacotamento).
+
+Analogia: imagine que você vai cozinhar. O `pom.xml` é a receita: lista de ingredientes (dependências), utensílios (plugins) e instruções (goals/phases).
+
+5) Estrutura de pastas do código — mapa visual
+------------------------------------------------
+- `src/main/java/com/example/cadastro/` — código-fonte Java.
+   - `Application.java` — ponto de entrada.
+   - `controller/` — endpoints HTTP.
+   - `model/` — entidades do domínio (tabelas/objetos).
+   - `repository/` — interação com banco (interfaces Spring Data).
+   - `security/` — configurações e filtros de segurança.
+   - `document/` — objetos para MongoDB.
+- `src/main/resources/` — configurações e recursos estáticos.
+
+6) O que faz cada parte do código — explicado em profundidade
+-------------------------------------------------------------
+
+6.1 `Application.java` — o ponto de partida
+-------------------------------------------
+É aqui que o Java procura o método `main`. Em Spring Boot, a classe com `@SpringBootApplication` inicializa o contexto, escaneia componentes anotados e prepara a aplicação para receber requisições.
+
+Por que é importante? Sem este ponto, a aplicação não inicia. Pense nisso como o botão "liga" do seu sistema.
+
+6.2 `controller/` — controladores de rota (detalhes)
+---------------------------------------------------
+Responsabilidade: receber requisições HTTP, validar dados, chamar serviços e retornar respostas.
+
+Exemplo didático completo:
+
+```
+@RestController
+@RequestMapping("/clientes")
+public class ClienteController {
+
+   private final ClienteService clienteService;
+
+   public ClienteController(ClienteService clienteService) {
+      this.clienteService = clienteService;
+   }
+
+   @PostMapping
+   public ResponseEntity<ClienteDto> criar(@RequestBody @Valid ClienteDto dto) {
+      ClienteDto criado = clienteService.criarCliente(dto);
+      return ResponseEntity.status(HttpStatus.CREATED).body(criado);
+   }
+}
+```
+
+Explicação linha a linha:
+- `@RestController` diz que os métodos aqui retornam JSON (ou outro conteúdo HTTP diretamente).
+- `@RequestMapping("/clientes")` define a rota base.
+- `@PostMapping` mapeia requisições POST para esse método.
+- `@Valid` ativa validação baseada em anotações no DTO (por exemplo, `@NotBlank`).
+
+6.3 `model/` — entidades e mapeamentos JPA mais a fundo
+------------------------------------------------------
+As entidades representam como os dados ficam no banco.
+
+Exemplo com relacionamento:
+
+```
+@Entity
+public class Animal {
+   @Id @GeneratedValue
+   private Long id;
+   private String nome;
+
+   @ManyToOne
+   @JoinColumn(name = "cliente_id")
+   private Cliente dono;
+}
+```
+
+O que significa `@ManyToOne`? Muitos animais podem pertencer a um cliente (uma relação típica no mundo real). O JPA cuida de armazenar a referência corretamente no banco.
+
+Problema comum: serialização circular (Cliente -> Animal -> Cliente). Solução: usar DTOs ou anotações como `@JsonIgnore` em um dos lados da relação para quebrar a recursão.
+
+6.4 `repository/` — onde o Spring faz mágica
+--------------------------------------------
+Defina interfaces como `ClienteRepository extends JpaRepository<Cliente, Long>`. O Spring Data fornece automaticamente métodos como `save`, `findById`, `findAll`. Você pode declarar novos métodos seguindo convenção de nomes (`findByNome`, `findByEmailAndAtivo`, etc.).
+
+Exemplo:
+```
+List<Cliente> findByNomeContainingIgnoreCase(String nome);
+```
+
+6.5 `security/` — explicação profunda do TokenFilter e UserDetails
+-----------------------------------------------------------------
+Elementos importantes:
+- `UserDetails`: representação do usuário que o Spring Security usa internamente (username, password, authorities).
+- `UserDetailsService`: serviço que carrega `UserDetails` a partir do banco.
+- `TokenFilter` (filtro): pega o header `Authorization`, extrai o token, valida e configura o contexto de segurança.
+
+Exemplo didático do que o filtro faz:
+1. Pega header `Authorization`.
+2. Se não houver header, passa a requisição adiante (rota pública ou bloqueada pelo config).
+3. Se houver, extrai token (remove "Bearer ").
+4. Valida assinatura e expiração do token.
+5. Se válido, busca detalhes do usuário e popula `SecurityContextHolder.getContext().setAuthentication(auth)`.
+
+6.6 `document/` — quando e por que usar Mongo
+---------------------------------------------
+Use Mongo para dados não relacionais ou com esquema variável. `@Document` anota a classe para ser armazenada no Mongo.
+
+7) Exemplos práticos e comandos `curl` (testes manuais)
+------------------------------------------------------
+Criar cliente (JSON de exemplo):
+
+```
+curl -X POST http://localhost:8080/clientes \
+   -H "Content-Type: application/json" \
+   -d '{"nome":"Ana","email":"ana@ex.com"}'
+```
+
+Autenticar (receber token):
+
+```
+curl -X POST http://localhost:8080/auth/login \
+   -H "Content-Type: application/json" \
+   -d '{"email":"ana@ex.com","senha":"senha123"}'
+```
+
+Usar token para acessar rota protegida:
+
+```
+curl -H "Authorization: Bearer <SEU_TOKEN_AQUI>" http://localhost:8080/consultas
+```
+
+8) Erros comuns e como resolver — checklist prático
+---------------------------------------------------
+- Se `mvn package` falhar: veja o log, normalmente falta dependência ou versão incompatível.
+- Se a aplicação não inicia: veja `application.properties` e logs de inicialização — o Spring descreve problemas de beans quebrados.
+- Se o token não é aceito: verifique se o tempo de expiração e a chave secreta usada para validar são os mesmos.
+
+9) Exercícios práticos (para treinar)
+------------------------------------
+1. Adicione um endpoint `GET /clientes/{id}/animais` que retorna apenas os nomes dos animais.
+2. Crie testes unitários para `ClienteService` usando Mockito.
+3. Adicione validação nos DTOs (por exemplo `@Email` no campo email) e teste as respostas de erro.
+
+10) Boas práticas e próximos passos
+-----------------------------------
+- Separe responsabilidades: Controllers (entrada), Services (regras de negócio), Repositories (persistência).
+- Use DTOs para entrada/saída — evita acidentalmente expor campos sensíveis.
+- Automatize builds e testes em CI com JDK 21.
+- Documente a API com OpenAPI/Swagger para facilitar uso por terceiros.
+
+Se quiser, posso também extrair código real do projeto (por exemplo o `ClienteController` e `SecurityConfig`) e comentar linha a linha para você — é uma ótima forma de aprender.
+
+Arquivo atualizado e disponível: Cadastro/Guia-do-projeto.txt
